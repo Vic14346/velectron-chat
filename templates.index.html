@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Velectron - Secure Community Hub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #36393f;
+            color: #dcddde;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .auth-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .auth-box {
+            background: #36393f;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .auth-box h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #fff;
+            font-size: 28px;
+        }
+
+        .auth-box .logo {
+            text-align: center;
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #b9bbbe;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            background: #40444b;
+            border: 1px solid #202225;
+            border-radius: 4px;
+            color: #dcddde;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus {
+            border-color: #5865f2;
+        }
+
+        .form-group input::placeholder {
+            color: #72767d;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: #5865f2;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            background: #4752c4;
+        }
+
+        .btn:disabled {
+            background: #72767d;
+            cursor: not-allowed;
+        }
+
+        .auth-toggle {
+            text-align: center;
+            margin-top: 20px;
+            color: #b9bbbe;
+        }
+
+        .auth-toggle a {
+            color: #5865f2;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .auth-toggle a:hover {
+            text-decoration: underline;
+        }
+
+        .error-message {
+            background: #f04747;
+            color: white;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .success-message {
+            background: #43b581;
+            color: white;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+            display: none;
+        }
+
+        .app-container.active {
+            display: flex;
+        }
+
+        .server-list {
+            width: 72px;
+            background: #202225;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px 0;
+            border-right: 1px solid #1a1b1e;
+            overflow-y: auto;
+        }
+
+        .server-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            margin: 8px 0;
+            font-weight: bold;
+            color: white;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .server-icon:hover {
+            border-radius: 30%;
+            transform: scale(1.1);
+        }
+
+        .server-icon.active {
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+        }
+
+        .channel-sidebar {
+            width: 240px;
+            background: #2f3136;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #202225;
+        }
+
+        .server-header {
+            padding: 16px;
+            border-bottom: 1px solid #202225;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .server-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .channels-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+
+        .channel-category {
+            padding: 8px 16px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #72767d;
+            text-transform: uppercase;
+        }
+
+        .channel-item {
+            padding: 8px 16px;
+            margin: 0 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s;
+            color: #b9bbbe;
+        }
+
+        .channel-item:hover {
+            background: #3c3f45;
+            color: #fff;
+        }
+
+        .channel-item.active {
+            background: #3c3f45;
+            color: #fff;
+        }
+
+        .sidebar-footer {
+            padding: 16px;
+            border-top: 1px solid #202225;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #292b2f;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+        }
+
+        .user-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .user-name {
+            font-size: 13px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .user-status {
+            font-size: 12px;
+            color: #72767d;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 16px;
+            border-bottom: 1px solid #202225;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #36393f;
+        }
+
+        .channel-name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .channel-name h1 {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .header-icons {
+            display: flex;
+            gap: 16px;
+        }
+
+        .header-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            background: transparent;
+            border: none;
+            color: #b9bbbe;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+            font-size: 18px;
+        }
+
+        .header-icon:hover {
+            background: #3c3f45;
+            color: #fff;
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .message-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .message-content {
+            flex: 1;
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .message-author {
+            font-weight: 500;
+            color: #fff;
+        }
+
+        .message-timestamp {
+            font-size: 12px;
+            color: #72767d;
+        }
+
+        .message-text {
+            color: #dcddde;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+
+        .message-reactions {
+            display: flex;
+            gap: 4px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        .reaction {
+            background: #2f3136;
+            border: 1px solid #202225;
+            border-radius: 12px;
+            padding: 4px 8px;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: background 0.2s;
+        }
+
+        .reaction:hover {
+            background: #3c3f45;
+        }
+
+        .input-area {
+            padding: 16px;
+            border-top: 1px solid #202225;
+        }
+
+        .message-input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .input-icons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .input-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            background: transparent;
+            border: none;
+            color: #b9bbbe;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+            font-size: 18px;
+        }
+
+        .input-icon:hover {
+            background: #3c3f45;
+            color: #fff;
+        }
+
+        .message-input {
+            flex: 1;
+            background: #40444b;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: #dcddde;
+            font-size: 15px;
+            font-family: inherit;
+            resize: none;
+            max-height: 100px;
+            outline: none;
+            transition: background 0.2s;
+        }
+
+        .message-input:focus {
+            background: #40444b;
+        }
+
+        .message-input::placeholder {
+            color: #72767d;
+        }
+
+        .user-list {
+            width: 240px;
+            background: #2f3136;
+            border-left: 1px solid #202225;
+            display: flex;
+            flex-direction: column
+          flex-direction: column;
+            padding: 16px 0;
+        }
+
+        .user-list-header {
+            padding: 0 16px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #72767d;
+            text-transform: uppercase;
+        }
+
+        .user-list-items {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 8px;
+        }
+
+        .user-list-item {
+            padding: 8px 12px;
+            margin: 4px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s;
+            color: #b9bbbe;
+        }
+
+        .user-list-item:hover {
+            background: #3c3f45;
+            color: #fff;
+        }
+
+        .user-status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #43b581;
+        }
+
+        .user-status-indicator.idle {
+            background: #faa61a;
+        }
+
+        .user-status-indicator.dnd {
+            background: #f04747;
+        }
+
+        .download-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transition: transform 0.2s;
+            z-index: 1000;
+        }
+
+        .download-btn:hover {
+            transform: scale(1.05);
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #202225;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3c3f45;
+        }
+
+        @media (max-width: 768px) {
+            .user-list {
+                display: none;
+            }
+
+            .channel-sidebar {
+                width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Auth Screen -->
+    <div class="auth-container" id="auth-container">
+        <div class="auth-box">
+            <div class="logo">🔐</div>
+            <h1 id="auth-title">Login</h1>
+            <div class="error-message" id="error-message"></div>
+            <div class="success-message" id="success-message"></div>
+            
+            <form id="auth-form">
+                <div id="username-group" class="form-group" style="display: none;">
+                    <label>Username</label>
+                    <input type="text" id="username" placeholder="Enter username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="email" placeholder="Enter email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" placeholder="Enter password" required>
+                </div>
+                
+                <button type="submit" class="btn" id="auth-btn">Login</button>
+            </form>
+            
+            <div class="auth-toggle">
+                Don't have an account? <a id="toggle-auth">Sign up</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div class="app-container" id="app-container">
+        <!-- Server List -->
+        <div class="server-list" id="server-list">
+            <div class="server-icon active" data-server="0">V</div>
+        </div>
+
+        <!-- Channel Sidebar -->
+        <div class="channel-sidebar">
+            <div class="server-header">
+                <h2 id="server-name">Velectron</h2>
+                <span class="server-header-icon">⋮</span>
+            </div>
+
+            <div class="channels-list" id="channels-list">
+                <!-- Channels will be loaded here -->
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="user-avatar" id="user-avatar">V</div>
+                <div class="user-info">
+                    <div class="user-name" id="user-name">User</div>
+                    <div class="user-status" id="user-status">Online</div>
+                </div>
+                <button class="header-icon" id="logout-btn" style="margin-left: auto;">🚪</button>
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="main-content">
+            <div class="chat-header">
+                <div>
+                    <div class="channel-name">
+                        <span>#</span>
+                        <h1 id="channel-title">general</h1>
+                    </div>
+                </div>
+                <div class="header-icons">
+                    <button class="header-icon">📞</button>
+                    <button class="header-icon">📹</button>
+                    <button class="header-icon">🔍</button>
+                </div>
+            </div>
+
+            <div class="messages-container" id="messages-container">
+                <!-- Messages will be loaded here -->
+            </div>
+
+            <div class="input-area">
+                <div class="message-input-wrapper">
+                    <div class="input-icons">
+                        <button class="input-icon" type="button">➕</button>
+                        <button class="input-icon" type="button">😊</button>
+                    </div>
+                    <input type="text" class="message-input" id="message-input" placeholder="Message #general">
+                </div>
+            </div>
+        </div>
+
+        <!-- User List -->
+        <div class="user-list">
+            <div class="user-list-header">Online — 12</div>
+            <div class="user-list-items" id="user-list-items">
+                <!-- Users will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Download Button -->
+    <button class="download-btn" id="download-btn" style="display: none;">⬇️ Download App</button>
+
+    <script>
+        const API_URL = '/api';
+        let currentUser = null;
+        let currentServer = null;
+        let currentChannel = null;
+        let accessToken = null;
+
+        // ==================== AUTH FUNCTIONS ====================
+
+        const authContainer = document.getElementById('auth-container');
+        const appContainer = document.getElementById('app-container');
+        const authForm = document.getElementById('auth-form');
+        const authTitle = document.getElementById('auth-title');
+        const authBtn = document.getElementById('auth-btn');
+        const toggleAuth = document.getElementById('toggle-auth');
+        const usernameGroup = document.getElementById('username-group');
+        const errorMessage = document.getElementById('error-message');
+        const successMessage = document.getElementById('success-message');
+        let isLoginMode = true;
+
+        toggleAuth.addEventListener('click', () => {
+            isLoginMode = !isLoginMode;
+            authTitle.textContent = isLoginMode ? 'Login' : 'Sign Up';
+            authBtn.textContent = isLoginMode ? 'Login' : 'Sign Up';
+            usernameGroup.style.display = isLoginMode ? 'none' : 'block';
+            toggleAuth.textContent = isLoginMode ? 'Sign up' : 'Login';
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+        });
+
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const username = document.getElementById('username').value;
+
+            try {
+                authBtn.disabled = true;
+                errorMessage.style.display = 'none';
+                successMessage.style.display = 'none';
+
+                const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/register';
+                const payload = isLoginMode 
+                    ? { email, password }
+                    : { username, email, password };
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Authentication failed');
+                }
+
+                accessToken = data.access_token;
+                currentUser = data.user;
+                localStorage.setItem('accessToken', accessToken);
+                localStorage.setItem('user', JSON.stringify(currentUser));
+
+                successMessage.textContent = data.message;
+                successMessage.style.display = 'block';
+
+                setTimeout(() => {
+                    authContainer.style.display = 'none';
+                    appContainer.classList.add('active');
+                    loadServers();
+                }, 1000);
+
+            } catch (error) {
+                errorMessage.textContent = error.message;
+                errorMessage.style.display = 'block';
+            } finally {
+                authBtn.disabled = false;
+            }
+        });
+
+        // ==================== APP FUNCTIONS ====================
+
+        async function loadServers() {
+            try {
+                const response = await fetch(`${API_URL}/servers`, {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+
+                const servers = await response.json();
+                
+                if (servers.length > 0) {
+                    currentServer = servers[0];
+                    document.getElementById('server-name').textContent = currentServer.name;
+                    loadChannels(currentServer.id);
+                }
+
+                updateUserInfo();
+            } catch (error) {
+                console.error('Error loading servers:', error);
+            }
+        }
+
+        async function loadChannels(serverId) {
+            try {
+                const response = await fetch(`${API_URL}/servers/${serverId}/channels`, {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+
+                const channels = await response.json();
+                const channelsList = document.getElementById('channels-list');
+                channelsList.innerHTML = '<div class="channel-category">📌 CHANNELS</div>';
+
+                channels.forEach((channel, index) => {
+                    const channelItem = document.createElement('div');
+                    channelItem.className = `channel-item ${index === 0 ? 'active' : ''}`;
+                    channelItem.dataset.channel = channel.id;
+                    channelItem.innerHTML = `<span class="channel-icon">#</span><span>${channel.name}</span>`;
+                    
+                    channelItem.addEventListener('click', () => {
+                        document.querySelectorAll('.channel-item').forEach(ch => ch.classList.remove('active'));
+                        channelItem.classList.add('active');
+                        currentChannel = channel;
+                        document.getElementById('channel-title').textContent = channel.name;
+                        document.getElementById('message-input').placeholder = `Message #${channel.name}`;
+                        loadMessages(channel.id);
+                    });
+
+                    channelsList.appendChild(channelItem);
+                });
+
+                if (channels.length > 0) {
+                    currentChannel = channels[0];
+                    loadMessages(channels[0].id);
+                }
+            } catch (error) {
+                console.error('Error loading channels:', error);
+            }
+        }
+
+        async function loadMessages(channelId) {
+            try {
+                const response = await fetch(`${API_URL}/channels/${channelId}/messages`, {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+
+                const messages = await response.json();
+                const messagesContainer = document.getElementById('messages-container');
+                messagesContainer.innerHTML = '';
+
+                messages.forEach(msg => {
+                    const messageGroup = document.createElement('div');
+                    messageGroup.className = 'message-group';
+                    
+                    messageGroup.innerHTML = `
+                        <div class="message-avatar">${msg.author.avatar}</div>
+                        <div class="message-content">
+                            <div class="message-header">
+                                <span class="message-author">${msg.author.username}</span>
+                                <span class="message-timestamp">${new Date(msg.created_at).toLocaleTimeString()}</span>
+                            </div>
+                            <div class="message-text">${msg.content}</div>
+                            ${msg.reactions.length > 0 ? `
+                                <div class="message-reactions">
+                                    ${msg.reactions.map(r => `
+                                        <div class="reaction" data-message-id="${msg.id}" data-emoji="${r.emoji}">
+                                            <span>${r.emoji}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                    
+                    messagesContainer.appendChild(messageGroup);
+                });
+
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            } catch (error) {
+                console.error('Error loading messages:', error);
+            }
+        }
+
+        async function sendMessage() {
+            const messageInput = document.getElementById('message-input');
+            const content = messageInput.value.trim();
+
+            if (!content || !currentChannel) return;
+
+            try {
+                const response = await fetch(`${API_URL}/channels/${currentChannel.id}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ content })
+                });
+
+                if (response.ok) {
+                    messageInput.value = '';
+                    loadMessages(currentChannel.id);
+                }
+            } catch (error) {
+                console.error('Error sending message:', error);
+            }
+        }
+
+        function updateUserInfo() {
+            if (currentUser) {
+                document.getElementById('user-avatar').textContent = currentUser.avatar;
+                document.getElementById('user-name').textContent = currentUser.username;
+                document.getElementById('user-status').textContent = currentUser.status;
+            }
+        }
+
+        // ==================== EVENT LISTENERS ====================
+
+        document.getElementById('message-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('user');
+            location.reload();
+        });
+
+        document.getElementById('download-btn').addEventListener('click', () => {
+            window.location.href = '/download/velectron-app.exe';
+        });
+
+        // ==================== INITIALIZATION ====================
+
+        window.addEventListener('load', () => {
+            const savedToken = localStorage.getItem('accessToken');
+            const savedUser = localStorage.getItem('user');
+
+            if (savedToken && savedUser) {
+                accessToken = savedToken;
+                currentUser = JSON.parse(savedUser);
+                authContainer.style.display = 'none';
+                appContainer.classList.add('active');
+                loadServers();
+                document.getElementById('download-btn').style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
