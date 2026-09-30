@@ -1,0 +1,6 @@
+FLASK_APP=app.py
+FLASK_ENV=development
+SECRET_KEY=your-secret-key-here-change-this
+JWT_SECRET_KEY=your-jwt-secret-key-here-change-this
+ENCRYPTION_KEY=your-encryption-key-here-change-this
+DATABASE_URL=sqlite:///velectron.db
