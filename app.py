@@ -173,343 +173,38 @@ user_servers = db.Table('user_servers',
     db.Column('user_id', db.Integer, db.ForeignKey('users.id'), primary_key=True),
     db.Column('server_id', db.Integer, db.ForeignKey('servers.id'), primary_key=True)
 )
-
 # ==================== ROUTES ====================
 
 @app.route('/')
 def index():
-    return render_template('index.html')
-
-@app.route('/api/auth/register', methods=['POST'])
-def register():
     try:
-        data = request.get_json()
-        
-        if not data.get('username') or not data.get('email') or not data.get('password'):
-            return jsonify({'error': 'Missing required fields'}), 400
-        
-        if len(data['password']) < 8:
-            return jsonify({'error': 'Password must be at least 8 characters'}), 400
-        
-        if User.query.filter_by(username=data['username']).first():
-            return jsonify({'error': 'Username already exists'}), 409
-        
-        if User.query.filter_by(email=data['email']).first():
-            return jsonify({'error': 'Email already exists'}), 409
-        
-        user = User(
-            username=data['username'],
-            email=data['email'],
-            avatar=data['username'][0].upper()
-        )
-        user.set_password(data['password'])
-        
-        db.session.add(user)
-        db.session.commit()
-        
-        default_server = Server(
-            name=f"{data['username']}'s Server",
-            description="Your personal server",
-            owner_id=user.id,
-            icon=user.avatar
-        )
-        db.session.add(default_server)
-        db.session.commit()
-        
-        for channel_name in ['general', 'announcements', 'random']:
-            channel = Channel(
-                name=channel_name,
-                description=f"{channel_name} channel",
-                server_id=default_server.id
-            )
-            db.session.add(channel)
-        
-        db.session.commit()
-        
-        access_token = create_access_token(identity=user.id)
-        
-        return jsonify({
-            'message': 'User registered successfully',
-            'access_token': access_token,
-            'user': user.to_dict()
-        }), 201
-    
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/auth/login', methods=['POST'])
-def login():
-    try:
-        data = request.get_json()
-        
-        if not data.get('email') or not data.get('password'):
-            return jsonify({'error': 'Missing email or password'}), 400
-        
-        user = User.query.filter_by(email=data['email']).first()
-        
-        if not user or not user.check_password(data['password']):
-            return jsonify({'error': 'Invalid email or password'}), 401
-        
-        user.last_seen = datetime.utcnow()
-        db.session.commit()
-        
-        access_token = create_access_token(identity=user.id)
-        
-        return jsonify({
-            'message': 'Login successful',
-            'access_token': access_token,
-            'user': user.to_dict()
-        }), 200
-    
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/auth/me', methods=['GET'])
-@jwt_required()
-def get_current_user():
-    try:
-        user_id = get_jwt_identity()
-        user = User.query.get(user_id)
-        
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-        
-        return jsonify(user.to_dict()), 200
-    
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/servers', methods=['GET'])
-@jwt_required()
-def get_servers():
-    try:
-        user_id = get_jwt_identity()
-        user = User.query.get(user_id)
-        
-        servers = user.owned_servers + user.servers
-        
-        return jsonify([server.to_dict() for server in servers]), 200
-    
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/servers', methods=['POST'])
-@jwt_required()
-def create_server():
-    try:
-        user_id = get_jwt_identity()
-        data = request.get_json()
-        
-        if not data.get('name'):
-            return jsonify({'error': 'Server name is required'}), 400
-        
-        server = Server(
-            name=data['name'],
-            description=data.get('description', ''),
-            owner_id=user_id,
-            icon=data.get('icon', 'V'),
-            is_private=data.get('is_private', True)
-        )
-        
-        db.session.add(server)
-        db.session.commit()
-        
-        for channel_name in ['general', 'announcements']:
-            channel = Channel(
-                name=channel_name,
-                description=f"{channel_name} channel",
-                server_id=server.id
-            )
-            db.session.add(channel)
-        
-        db.session.commit()
-        
-        return jsonify(server.to_dict()), 201
-    
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/servers/<int:server_id>/channels', methods=['GET'])
-@jwt_required()
-def get_channels(server_id):
-    try:
-        channels = Channel.query.filter_by(server_id=server_id).all()
-        return jsonify([channel.to_dict() for channel in channels]), 200
-    
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/channels/<int:channel_id>/messages', methods=['GET'])
-@jwt_required()
-def get_messages(channel_id):
-    try:
-        messages = Message.query.filter_by(channel_id=channel_id).order_by(Message.created_at).all()
-        return jsonify([msg.to_dict(decrypt=True) for msg in messages]), 200
-    
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/channels/<int:channel_id>/messages', methods=['POST'])
-@jwt_required()
-def send_message(channel_id):
-    try:
-        user_id = get_jwt_identity()
-        data = request.get_json()
-        
-        if not data.get('content'):
-            return jsonify({'error': 'Message content is required'}), 400
-        
-        channel = Channel.query.get(channel_id)
-        if not channel:
-            return jsonify({'error': 'Channel not found'}), 404
-        
-        message = Message(
-            content=cipher_suite.encrypt(data['content'].encode()).decode(),
-            author_id=user_id,
-            channel_id=channel_id,
-            is_encrypted=True
-        )
-        
-        db.session.add(message)
-        db.session.commit()
-        
-        return jsonify(message.to_dict(decrypt=True)), 201
-    
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/messages/<int:message_id>', methods=['DELETE'])
-@jwt_required()
-def delete_message(message_id):
-    try:
-        user_id = get_jwt_identity()
-        message = Message.query.get(message_id)
-        
-        if not message:
-            return jsonify({'error': 'Message not found'}), 404
-        
-        if message.author_id != user_id:
-            return jsonify({'error': 'Unauthorized'}), 403
-        
-        db.session.delete(message)
-        db.session.commit()
-        
-        return jsonify({'message': 'Message deleted'}), 200
-    
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/messages/<int:message_id>/reactions', methods=['POST'])
-@jwt_required()
-def add_reaction(message_id):
-    try:
-        user_id = get_jwt_identity()
-        data = request.get_json()
-        
-        if not data.get('emoji'):
-            return jsonify({'error': 'Emoji is required'}), 400
-        
-        message = Message.query.get(message_id)
-        if not message:
-            return jsonify({'error': 'Message not found'}), 404
-        
-        existing = Reaction.query.filter_by(
-            message_id=message_id,
-            user_id=user_id,
-            emoji=data['emoji']
-        ).first()
-        
-        if existing:
-            db.session.delete(existing)
-        else:
-            reaction = Reaction(
-                emoji=data['emoji'],
-                user_id=user_id,
-                message_id=message_id
-            )
-            db.session.add(reaction)
-        
-        db.session.commit()
-        
-        return jsonify(message.to_dict(decrypt=True)), 200
-    
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/users/<int:user_id>', methods=['GET'])
-@jwt_required()
-def get_user(user_id):
-    try:
-        user = User.query.get(user_id)
-        
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-        
-        return jsonify(user.to_dict()), 200
-    
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/users/<int:user_id>/status', methods=['PUT'])
-@jwt_required()
-def update_user_status(user_id):
-    try:
-        current_user_id = get_jwt_identity()
-        
-        if current_user_id != user_id:
-            return jsonify({'error': 'Unauthorized'}), 403
-        
-        data = request.get_json()
-        user = User.query.get(user_id)
-        
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-        
-        if data.get('status') in ['online', 'idle', 'dnd', 'offline']:
-            user.status = data['status']
-            user.last_seen = datetime.utcnow()
-            db.session.commit()
-        
-        return jsonify(user.to_dict()), 200
-    
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-
-@app.errorhandler(404)
-def not_found(error):
-    return jsonify({'error': 'Not found'}), 404
-
-
-@app.errorhandler(500)
-def internal_error(error):
-    db.session.rollback()
-    return jsonify({'error': 'Internal server error'}), 500
-
-
-@app.before_request
-def before_request():
-    db.create_all()
-
-
-if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+        return render_template('index.html')
+    except:
+        return '''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Velectron - Setup Required</title>
+            <style>
+                body { font-family: Arial; text-align: center; padding: 50px; background: #36393f; color: #fff; }
+                .container { max-width: 600px; margin: 0 auto; }
+                h1 { color: #5865f2; }
+                code { background: #2f3136; padding: 10px; display: block; margin: 20px 0; border-radius: 5px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>🔐 Velectron Setup</h1>
+                <p>The templates folder is missing index.html</p>
+                <p><strong>Solution:</strong></p>
+                <ol>
+                    <li>Create a <code>templates</code> folder in your project root</li>
+                    <li>Create <code>index.html</code> file inside the templates folder</li>
+                    <li>Copy the HTML code from your GitHub into index.html</li>
+                    <li>Restart the Flask app</li>
+                </ol>
+                <p>Or check your GitHub repository structure</p>
+            </div>
+        </body>
+        </html>
+        ''', 200
